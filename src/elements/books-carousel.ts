@@ -1,11 +1,13 @@
 import {BookData} from "../service/api.service";
 import {ScreenUtil} from "../utils/screen-util";
-import {timer} from "rxjs";
+import {Subject, timer} from "rxjs";
+import {takeUntil} from "rxjs/operators";
 
 export class BooksCarousel extends HTMLElement {
   shadow: ShadowRoot;
   bookList: HTMLUListElement;
   observer: IntersectionObserver;
+  reInitScroll$: Subject<any>;
 
   constructor() {
     super();
@@ -13,6 +15,7 @@ export class BooksCarousel extends HTMLElement {
     this.shadow = this.attachShadow({mode: 'open'})
     this.bookList = document.createElement('ul');
     this.shadow.appendChild(this.bookList);
+    this.reInitScroll$ = new Subject();
 
     this.observer = new IntersectionObserver((entries, self) => {
 
@@ -29,6 +32,7 @@ export class BooksCarousel extends HTMLElement {
   }
 
   updateList(listOfBooks: BookData[]) {
+    this.reInitScroll$.next();
     this.bookList.innerHTML = '';
 
     listOfBooks.forEach((elemData: BookData, index) => {
@@ -44,7 +48,10 @@ export class BooksCarousel extends HTMLElement {
 
     window.scrollTo(0,0);
 
-    timer(5000, 1000).subscribe(() => {
+    timer(5000, 1000)
+      .pipe(
+        takeUntil(this.reInitScroll$)
+      ).subscribe(() => {
       window.scrollBy({left: 0, top: window.screen.availHeight / 2, behavior: 'smooth'});
     });
   }

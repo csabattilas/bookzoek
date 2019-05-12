@@ -3,7 +3,7 @@ import {
   distinctUntilChanged,
   filter,
   map,
-  switchMap,
+  switchMap, takeUntil,
   tap
 } from "rxjs/operators";
 import {SearchService} from "../service/api.service";
@@ -34,7 +34,7 @@ export class VoiceSearchBar extends HTMLElement {
 
   private init() {
     const recognitionSubject$ = new Subject();
-
+    const reInitTimer$ = new Subject();
     const searchService = new SearchService();
 
     const input = document.createElement('input');
@@ -78,7 +78,10 @@ export class VoiceSearchBar extends HTMLElement {
     };
 
     merge(clickSubject$, inputKeyUp$, recognitionSubject$).pipe(
-      tap(() => this.loader.style.display = 'block'),
+      tap(() => {
+        this.loader.style.display = 'block';
+        reInitTimer$.next();
+      }),
       switchMap((data: any) => {
         return searchService.search('title', data)
       })
@@ -97,9 +100,13 @@ export class VoiceSearchBar extends HTMLElement {
 
       this.secondsAgo = 0;
 
-      timer(1000, 1000).subscribe(() => {
-        this.secondsAgo++;
-        relTimeSpan.innerHTML = this.relTime.format(-this.secondsAgo, 'second');
+      timer(1000, 1000)
+        .pipe(
+          takeUntil(reInitTimer$)
+        )
+        .subscribe(() => {
+          this.secondsAgo++;
+          relTimeSpan.innerHTML = this.relTime.format(-this.secondsAgo, 'second');
       })
 
     });

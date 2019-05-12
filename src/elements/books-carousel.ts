@@ -7,11 +7,6 @@ export class BooksCarousel extends HTMLElement {
   bookList: HTMLUListElement;
   observer: IntersectionObserver;
 
-  static readonly scrollConfig = {
-    rootMargin: '0px 0px 50px 0px',
-    threshold: 0
-  };
-
   constructor() {
     super();
 
@@ -27,30 +22,30 @@ export class BooksCarousel extends HTMLElement {
           self.unobserve(entry.target);
         }
       });
-    }, BooksCarousel.scrollConfig);
+    }, {
+      rootMargin: '0px 0px ' + window.screen.availHeight / 2 + 'px  0px',
+      threshold: 0
+    });
   }
 
   updateList(listOfBooks: BookData[]) {
-    console.log(name);
-    // load the first 4 element
-    // scroll based on data
-
     this.bookList.innerHTML = '';
 
-    listOfBooks.forEach((elemData: BookData) => {
+    listOfBooks.forEach((elemData: BookData, index) => {
       const bookItem = document.createElement('li');
       bookItem.innerHTML = `
         <h2>${elemData.title}</h2>
         <h3>${elemData.author} ${elemData.firstPublishedDate}</h3>
         <img data-src="http://covers.openlibrary.org/b/isbn/${elemData.isbn}-${ScreenUtil.getKey(window.screen.availWidth)}.jpg">
       `;
-      this.observer.observe(bookItem);
-
       this.bookList.appendChild(bookItem);
+      this.observer.observe(bookItem);
     });
 
+    window.scrollTo(0,0);
+
     timer(5000, 1000).subscribe(() => {
-      window.scrollBy({left: 0, top: 100, behavior: 'smooth'});
+      window.scrollBy({left: 0, top: window.screen.availHeight / 2, behavior: 'smooth'});
     });
   }
 

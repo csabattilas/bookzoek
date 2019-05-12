@@ -1,5 +1,5 @@
 import {from, Observable} from "rxjs";
-import {config} from "../config";
+import {config} from "../utils/config";
 
 export interface BookData {
   title: string;

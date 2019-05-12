@@ -1,9 +1,21 @@
-import {fromEvent} from "rxjs";
-import {filter, mergeMap, switchMap} from "rxjs/operators";
+import {fromEvent, Subject, merge, timer} from "rxjs";
+import {
+  distinctUntilChanged,
+  filter,
+  map,
+  switchMap,
+  tap
+} from "rxjs/operators";
 import {SearchService} from "../service/api.service";
 
 export class VoiceSearchBar extends HTMLElement {
   shadow: ShadowRoot;
+  voiceToggle: HTMLButtonElement;
+  searchButton: HTMLButtonElement;
+  loader: HTMLDivElement;
+  relTime: any;
+  secondsAgo = 0;
+
   recognition: any;
   voiceOn = false;
 
@@ -11,35 +23,65 @@ export class VoiceSearchBar extends HTMLElement {
     super();
 
     this.shadow = this.attachShadow({mode: 'open'})
+
     this.recognition = new (window as any).webkitSpeechRecognition();
     this.recognition.lang = 'EN';
+
+    this.relTime = new (Intl as any).RelativeTimeFormat(navigator.language);
 
     this.init();
   }
 
   private init() {
-    const input = document.createElement('input');
+    const recognitionSubject$ = new Subject();
 
-    const voiceToggle = document.createElement('button');
-    voiceToggle.innerHTML = 'voice on';
-
-    const goSearch = document.createElement('button');
-    goSearch.innerHTML = "search";
-
-    this.shadow.appendChild(input);
-    this.shadow.appendChild(voiceToggle);
-    this.shadow.appendChild(goSearch);
-
-    const searchClick$ = fromEvent(goSearch, 'click');
-    const searchKeyUp$ = fromEvent(input, 'keyup');
     const searchService = new SearchService();
 
-    const voiceToggle$ = fromEvent(voiceToggle, 'click');
+    const input = document.createElement('input');
 
-    searchKeyUp$.pipe(
-      filter((e: KeyboardEvent) => e.code === '13'),
-      // mergeMap(() => searchClick$),
-      switchMap(() => searchService.search('title', input.value))
+    this.voiceToggle = document.createElement('button');
+    this.voiceToggle.innerHTML = 'voice on';
+
+    this.searchButton = document.createElement('button');
+    this.searchButton.innerHTML = "search";
+
+    this.loader = document.createElement('div');
+    this.loader.innerHTML = 'loading books...';
+    this.loader.style.display = 'none';
+
+    const relTimeSpan = document.createElement('span');
+
+    this.shadow.appendChild(input);
+    this.shadow.appendChild(this.voiceToggle);
+    this.shadow.appendChild(this.searchButton);
+    this.shadow.appendChild(relTimeSpan);
+    this.shadow.appendChild(this.loader);
+
+    const clickSubject$ = fromEvent(this.searchButton, 'click')
+      .pipe(
+        map(() => input.value));
+
+    const inputKeyUp$ = fromEvent(input, 'keyup')
+      .pipe(
+        filter((e: KeyboardEvent) => e.code === 'Enter'),
+        map((event: KeyboardEvent) => (event.target as HTMLInputElement).value),
+        distinctUntilChanged());
+
+    const voiceToggle$ = fromEvent(this.voiceToggle, 'click')
+
+    this.recognition.onresult = (recognitionResultEvent: any) => {
+      input.value = recognitionResultEvent.results[0][0].transcript;
+
+      this.voiceOff();
+
+      recognitionSubject$.next(input.value);
+    };
+
+    merge(clickSubject$, inputKeyUp$, recognitionSubject$).pipe(
+      tap(() => this.loader.style.display = 'block'),
+      switchMap((data: any) => {
+        return searchService.search('title', data)
+      })
     ).subscribe((data) => {
       const resultEvent = new CustomEvent("result", {
         bubbles: true,
@@ -48,34 +90,37 @@ export class VoiceSearchBar extends HTMLElement {
         detail: data
       });
 
+      this.searchButton.disabled = false;
+      this.loader.style.display = 'none';
+
       this.dispatchEvent(resultEvent);
+
+      this.secondsAgo = 0;
+
+      timer(1000, 1000).subscribe(() => {
+        this.secondsAgo++;
+        relTimeSpan.innerHTML = this.relTime.format(-this.secondsAgo, 'second');
+      })
+
     });
 
     voiceToggle$
-      .subscribe(data => {
+      .subscribe(() => {
         this.voiceOn = !this.voiceOn;
 
         if (this.voiceOn) {
-          voiceToggle.innerHTML = 'voice off';
+          this.voiceToggle.innerHTML = 'voice off';
+          this.searchButton.disabled = true;
           this.recognition.start();
         } else {
-          voiceToggle.innerHTML = 'voice on';
-          this.recognition.stop();
+          this.voiceOff();
         }
-    });
+      });
+  }
 
-    this.recognition.onresult = (recognitionResultEvent: any) => {
-      for (let i = recognitionResultEvent.resultIndex; i < recognitionResultEvent.results.length; ++i) {
-        if (recognitionResultEvent.results[i].isFinal) {
-          input.value = recognitionResultEvent.results[i][0].transcript;
-        } else {
-          input.value += recognitionResultEvent.results[i][0].transcript;
-        }
-      }
-
-      this.voiceOn = false;
-      voiceToggle.innerHTML = 'voice on';
-      this.recognition.stop();
-    }
+  private voiceOff() {
+    this.voiceToggle.innerHTML = 'voice on';
+    this.searchButton.disabled = false;
+    this.recognition.stop();
   }
 }

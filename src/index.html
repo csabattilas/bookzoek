@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="">
+<html>
 
 <head>
     <meta charset="utf-8">
@@ -11,12 +11,38 @@
     </title>
 
     <meta name="description" content="<%= htmlWebpackPlugin.options.title %>">
-    <link rel="stylesheet" src="style.css">
+    <style>
+        body{
+            font-family: Arial;
+            font-size: 12px;
+            padding: 0;
+        }
+
+        h2 {
+            font-size: 14px;
+        }
+
+        h3 {
+            font-size: 13px;
+        }
+
+        voice-search-bar {
+            display: block;
+            position: fixed;
+            height: 40px;
+            background: white;
+            width: 100%;
+        }
+
+        books-carousel {
+            display: block;
+            padding-top: 40px;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>Custom elements playground</h1>
-    <voice-search-bar onResult=""></voice-search-bar>
-    <books-carousel list=""></books-carousel>
+    <voice-search-bar></voice-search-bar>
+    <books-carousel></books-carousel>
 </body>
 </html>

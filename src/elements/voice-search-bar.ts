@@ -64,8 +64,7 @@ export class VoiceSearchBar extends HTMLElement {
     const inputKeyUp$ = fromEvent(input, 'keyup')
       .pipe(
         filter((e: KeyboardEvent) => e.code === 'Enter'),
-        map((event: KeyboardEvent) => (event.target as HTMLInputElement).value),
-        distinctUntilChanged());
+        map((event: KeyboardEvent) => (event.target as HTMLInputElement).value));
 
     const voiceToggle$ = fromEvent(this.voiceToggle, 'click')
 
@@ -78,6 +77,7 @@ export class VoiceSearchBar extends HTMLElement {
     };
 
     merge(clickSubject$, inputKeyUp$, recognitionSubject$).pipe(
+      distinctUntilChanged(),
       tap(() => {
         this.loader.style.display = 'block';
         reInitTimer$.next();

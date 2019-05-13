@@ -12,7 +12,8 @@ export class VoiceSearchBar extends HTMLElement {
   shadow: ShadowRoot;
   voiceToggle: HTMLButtonElement;
   searchButton: HTMLButtonElement;
-  loader: HTMLDivElement;
+  relTimeSpan: HTMLSpanElement;
+
   relTime: any;
   secondsAgo = 0;
 
@@ -45,17 +46,12 @@ export class VoiceSearchBar extends HTMLElement {
     this.searchButton = document.createElement('button');
     this.searchButton.innerHTML = "search";
 
-    this.loader = document.createElement('div');
-    this.loader.innerHTML = 'loading books...';
-    this.loader.style.display = 'none';
-
-    const relTimeSpan = document.createElement('span');
+    this.relTimeSpan = document.createElement('span');
 
     this.shadow.appendChild(input);
     this.shadow.appendChild(this.voiceToggle);
     this.shadow.appendChild(this.searchButton);
-    this.shadow.appendChild(relTimeSpan);
-    this.shadow.appendChild(this.loader);
+    this.shadow.appendChild(this.relTimeSpan);
 
     const clickSubject$ = fromEvent(this.searchButton, 'click')
       .pipe(
@@ -79,7 +75,7 @@ export class VoiceSearchBar extends HTMLElement {
     merge(clickSubject$, inputKeyUp$, recognitionSubject$).pipe(
       distinctUntilChanged(),
       tap(() => {
-        this.loader.style.display = 'block';
+        this.relTimeSpan.innerHTML = ' ...loading new books';
         reInitTimer$.next();
       }),
       switchMap((data: any) => {
@@ -94,19 +90,18 @@ export class VoiceSearchBar extends HTMLElement {
       });
 
       this.searchButton.disabled = false;
-      this.loader.style.display = 'none';
 
       this.dispatchEvent(resultEvent);
 
       this.secondsAgo = 0;
 
-      timer(1000, 1000)
+      timer(0, 1000)
         .pipe(
           takeUntil(reInitTimer$)
         )
         .subscribe(() => {
+          this.relTimeSpan.innerHTML = ` ...latest results listed ${this.relTime.format(-this.secondsAgo, 'second')}`;
           this.secondsAgo++;
-          relTimeSpan.innerHTML = this.relTime.format(-this.secondsAgo, 'second');
       })
 
     });
